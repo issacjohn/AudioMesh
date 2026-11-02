@@ -1,5 +1,7 @@
 # AudioMesh
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-issac__john-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/issac_john)
+
 Route one audio stream to **every** playback endpoint on a Windows machine at the same time —
 internal speakers, USB DAC, HDMI/DisplayPort monitor and Bluetooth headsets — with per-device
 volume, per-device alignment delay, and automatic clock-drift correction.
@@ -281,6 +283,11 @@ To confirm which endpoint is which, run the solo sweep - it plays 6 s on each en
 ```powershell
 dotnet run --project .\tools\SmokeTest -- Dubstep 5 solo
 ```
+
+## Support
+
+If AudioMesh saves you time and you'd like to say thanks, you can
+[buy me a coffee](https://buymeacoffee.com/issac_john).
 
 ## Known limits
 
