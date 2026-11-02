@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <Resource Include="Assets\AudioMesh.ico" />
+    <Resource Include="Assets\icon.png" />
     <Resource Include="Assets\noise.png" />
   </ItemGroup>
 

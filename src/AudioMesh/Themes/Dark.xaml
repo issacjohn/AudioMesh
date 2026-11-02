@@ -107,6 +107,45 @@
         </Setter>
     </Style>
 
+    <Style x:Key="CoffeeButton" TargetType="Button">
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="Foreground" Value="#1A1400"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" CornerRadius="12" BorderThickness="1"
+                            BorderBrush="#2EFFFFFF">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#FFE45C" Offset="0"/>
+                                <GradientStop Color="#FFC83D" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.Effect>
+                            <DropShadowEffect Color="#FFB800" BlurRadius="18" ShadowDepth="3" Opacity="0.24"/>
+                        </Border.Effect>
+                        <ContentPresenter Margin="18,0" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.95"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="#66FFFFFF"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.76"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.35"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Window caption buttons -->
     <Style x:Key="CaptionButton" TargetType="Button">
         <Setter Property="Width" Value="38"/>

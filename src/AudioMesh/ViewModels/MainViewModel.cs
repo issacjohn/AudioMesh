@@ -45,6 +45,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private LatencyMode _latencyMode;
     private LatencyOption _selectedLatencyOption = LatencyOption.For(LatencyMode.Stable);
     private bool _isEqOpen;
+    private bool _isAboutOpen;
     private DeviceViewModel? _eqDevice;
     private MicrophoneOption? _selectedMicrophone;
     private string _calibrationStatus = "Uses the selected microphone to align the enabled speakers.";
@@ -74,6 +75,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         RefreshCommand = new RelayCommand(_ => RefreshAll());
         CalibrateCommand = new RelayCommand(_ => RunCalibration());
         CloseEqCommand = new RelayCommand(_ => CloseEq());
+        OpenAboutCommand = new RelayCommand(_ => OpenAbout());
+        CloseAboutCommand = new RelayCommand(_ => IsAboutOpen = false);
+        CloseOverlayCommand = new RelayCommand(_ => CloseOverlay());
+        OpenSupportCommand = new RelayCommand(_ => ExternalLink.Open("https://buymeacoffee.com/issac_john"));
+        OpenGitHubCommand = new RelayCommand(_ => ExternalLink.Open("https://github.com/issacjohn/AudioMesh"));
 
         _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         _uiTimer.Tick += (_, _) => Tick();
@@ -104,6 +110,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public RelayCommand RefreshCommand { get; }
     public RelayCommand CalibrateCommand { get; }
     public RelayCommand CloseEqCommand { get; }
+    public RelayCommand OpenAboutCommand { get; }
+    public RelayCommand CloseAboutCommand { get; }
+    public RelayCommand CloseOverlayCommand { get; }
+    public RelayCommand OpenSupportCommand { get; }
+    public RelayCommand OpenGitHubCommand { get; }
 
     public DeviceViewModel? EqDevice
     {
@@ -128,6 +139,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         get => _isEqOpen;
         private set => Set(ref _isEqOpen, value);
+    }
+
+    public bool IsAboutOpen
+    {
+        get => _isAboutOpen;
+        private set => Set(ref _isAboutOpen, value);
+    }
+
+    public string VersionText
+    {
+        get
+        {
+            Version? version = typeof(MainViewModel).Assembly.GetName().Version;
+            return version == null ? "Version 1.0.0" : $"Version {version.Major}.{version.Minor}.{version.Build}";
+        }
     }
 
     /// <summary>
@@ -645,8 +671,31 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void OpenEq(DeviceViewModel device)
     {
+        IsAboutOpen = false;
         EqDevice = device;
         IsEqOpen = true;
+    }
+
+    private void OpenAbout()
+    {
+        if (_isEqOpen)
+        {
+            IsEqOpen = false;
+            EqDevice = null;
+        }
+
+        IsAboutOpen = true;
+    }
+
+    private void CloseOverlay()
+    {
+        if (_isAboutOpen)
+        {
+            IsAboutOpen = false;
+            return;
+        }
+
+        CloseEq();
     }
 
     private void CloseEq()

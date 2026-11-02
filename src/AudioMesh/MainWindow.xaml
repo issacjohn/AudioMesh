@@ -26,7 +26,7 @@
     </shell:WindowChrome.WindowChrome>
 
     <Window.InputBindings>
-        <KeyBinding Key="Escape" Command="{Binding CloseEqCommand}"/>
+        <KeyBinding Key="Escape" Command="{Binding CloseOverlayCommand}"/>
         <KeyBinding Key="F5" Command="{Binding RefreshCommand}"/>
     </Window.InputBindings>
 
@@ -126,6 +126,10 @@
                     </Button>
                     <Button Content="{Binding StartButtonText}" Style="{StaticResource PrimaryButton}"
                             Command="{Binding ToggleCommand}" Width="126"/>
+                    <Button Style="{StaticResource IconButton}" Content="&#xE946;"
+                            Command="{Binding OpenAboutCommand}" Margin="8,0,0,0"
+                            AutomationProperties.Name="About AudioMesh"
+                            ToolTip="About, GitHub and support"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"
@@ -658,6 +662,92 @@
                                     Command="{Binding DataContext.CloseEqCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                     Height="34" Width="96"/>
                         </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- About overlay -->
+        <Border Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="22"
+                Background="#CC04060A"
+                Visibility="{Binding IsAboutOpen, Converter={StaticResource BoolToVisibility}}">
+            <Border Style="{StaticResource GlassPanel}" Width="620" MaxHeight="620"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid Margin="30,26,30,22">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <TextBlock Text="ABOUT AUDIOMESH" FontSize="10" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentBrush}"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBlock Text="{Binding VersionText}" FontSize="10"
+                                       Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"
+                                       Margin="0,0,10,0"/>
+                            <Button Style="{StaticResource CaptionButton}" Content="&#xE8BB;"
+                                    Command="{Binding CloseAboutCommand}"
+                                    AutomationProperties.Name="Close about" ToolTip="Close"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,20,0,0">
+                        <Border Width="88" Height="88" CornerRadius="22" ClipToBounds="True"
+                                Background="#10151E" BorderBrush="{StaticResource StrokeBrush}"
+                                BorderThickness="1">
+                            <Image Source="Assets/icon.png" Stretch="UniformToFill"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center" Margin="18,0,0,0">
+                            <TextBlock Text="AudioMesh" FontSize="28" FontWeight="Bold"/>
+                            <TextBlock Text="One stream. Every speaker." FontSize="13"
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="2" Margin="0,18,0,0" FontSize="12" LineHeight="19"
+                               Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"
+                               Text="Route one audio stream to every Windows output at once — Bluetooth, USB, HDMI and analog. Clock-drift correction, microphone auto-align, per-speaker EQ, virtual surround and a notification-area home."/>
+
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,22,0,0">
+                        <Button Style="{StaticResource CoffeeButton}"
+                                Command="{Binding OpenSupportCommand}"
+                                AutomationProperties.Name="Buy me a coffee"
+                                ToolTip="Open buymeacoffee.com/issac_john">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="18" Height="18" Margin="0,0,9,0">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="M4.5,7.5 H16.5 V14.5 C16.5,17.6 14.4,20 10.5,20 C6.6,20 4.5,17.6 4.5,14.5 Z"
+                                              Stroke="#1A1400" StrokeThickness="1.7"
+                                              StrokeLineJoin="Round" Fill="Transparent"/>
+                                        <Path Data="M16.5,9.5 H18.2 C20,9.5 21,10.8 21,12.2 C21,13.6 20,15 18.2,15 H16.5"
+                                              Stroke="#1A1400" StrokeThickness="1.7"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" Fill="Transparent"/>
+                                        <Path Data="M8,4.2 C9,2.8 7.6,2.2 8.6,0.9 M11.4,4.2 C12.4,2.8 11,2.2 12,0.9"
+                                              Stroke="#1A1400" StrokeThickness="1.5"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" Fill="Transparent"/>
+                                        <Path Data="M10.5,10.6 C9.8,9.7 8.5,10.4 9.2,11.6 L10.5,13 L11.8,11.6 C12.5,10.4 11.2,9.7 10.5,10.6 Z"
+                                              Fill="#1A1400" StrokeThickness="0"/>
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="Buy me a coffee" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Content="GitHub" Style="{StaticResource GhostButton}" Height="40"
+                                Margin="10,0,0,0" Command="{Binding OpenGitHubCommand}"
+                                AutomationProperties.Name="Open GitHub repository"
+                                ToolTip="github.com/issacjohn/AudioMesh"/>
+                    </StackPanel>
+
+                    <Grid Grid.Row="4" Margin="0,22,0,0">
+                        <TextBlock Text="Built with WPF, NAudio and a custom sinc resampler."
+                                   FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                   VerticalAlignment="Center"/>
+                        <Button Content="Close" Style="{StaticResource GhostButton}" Height="34" Width="88"
+                                HorizontalAlignment="Right" Command="{Binding CloseAboutCommand}"/>
                     </Grid>
                 </Grid>
             </Border>

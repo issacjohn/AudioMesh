@@ -9,6 +9,7 @@ dist/
 # Website and reel are separate deliverables, not part of the app source
 website/
 reel/
+design/
 
 # Large binaries
 *.exe
