@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{5FBC711D-3B9E-4426-916A-CD1213726CA0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudioMesh", "src\AudioMesh\AudioMesh.csproj", "{D23B00C4-5022-407D-A27D-00BCF5315090}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{04766F2F-C304-42EB-BFB5-F8E16AD897BE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmokeTest", "tools\SmokeTest\SmokeTest.csproj", "{4218E1A6-CA3A-4202-8D1C-DC3C8EBAB68A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D23B00C4-5022-407D-A27D-00BCF5315090}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{D23B00C4-5022-407D-A27D-00BCF5315090}.Debug|Any CPU.Build.0 = Debug|x64
+		{D23B00C4-5022-407D-A27D-00BCF5315090}.Release|Any CPU.ActiveCfg = Release|x64
+		{D23B00C4-5022-407D-A27D-00BCF5315090}.Release|Any CPU.Build.0 = Release|x64
+		{4218E1A6-CA3A-4202-8D1C-DC3C8EBAB68A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4218E1A6-CA3A-4202-8D1C-DC3C8EBAB68A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4218E1A6-CA3A-4202-8D1C-DC3C8EBAB68A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4218E1A6-CA3A-4202-8D1C-DC3C8EBAB68A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D23B00C4-5022-407D-A27D-00BCF5315090} = {5FBC711D-3B9E-4426-916A-CD1213726CA0}
+		{4218E1A6-CA3A-4202-8D1C-DC3C8EBAB68A} = {04766F2F-C304-42EB-BFB5-F8E16AD897BE}
+	EndGlobalSection
+EndGlobal

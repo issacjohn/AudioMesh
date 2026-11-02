@@ -1,0 +1,16 @@
+# Build output
+bin/
+obj/
+dist/
+*.user
+*.suo
+.vs/
+
+# Website and reel are separate deliverables, not part of the app source
+website/
+reel/
+
+# Large binaries
+*.exe
+*.mp4
+*.wav

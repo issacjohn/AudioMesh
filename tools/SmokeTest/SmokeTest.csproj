@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>SmokeTest</AssemblyName>
+    <RootNamespace>AudioMesh.SmokeTest</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\AudioMesh\Audio\*.cs" Link="Audio\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\AudioMesh\Services\AudioDefaults.cs" Link="Services\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\AudioMesh\ViewModels\DeviceOrdering.cs" Link="ViewModels\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

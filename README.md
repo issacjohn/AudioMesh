@@ -1,8 +1,4 @@
 # AudioMesh
-Play anything on your PC and hear it everywhere at once — Bluetooth, USB, HDMI and analog outputs — with clock-drift correction, microphone-measured sync and per-speaker channel control.
-
-
-# AudioMesh
 
 Route one audio stream to **every** playback endpoint on a Windows machine at the same time —
 internal speakers, USB DAC, HDMI/DisplayPort monitor and Bluetooth headsets — with per-device
@@ -55,16 +51,18 @@ change — no clicks, no gaps.
   matrix-decoded surround layout
 - **Virtual surround** per speaker: a width control that widens the side image and adds a
   short reflection while keeping bass centred, so even one or two speakers sound bigger
-- **Low latency** mode: smaller capture, elastic and render buffers (about 150 ms less delay)
-  for better video lip-sync, at the cost of less Bluetooth headroom
+- **Buffer mode** — **Latency**, **Balanced** or **Stable** moves the capture, elastic and
+  render buffers together. Latency is closest to direct playback (~135 ms app-side for
+  Bluetooth), Stable keeps the most headroom (~310 ms)
 - **Auto sync**: plays a short tone on each enabled speaker, records it with a selectable
   microphone, and sets the relative delays automatically
 - **Per-speaker EQ**: 10 graphic bands, bass/treble shelves, volume-aware loudness, presets
   and a live response curve
-- **Start routing on launch** toggle, and a **Refresh** button that re-reads both speakers and
-  microphones (with a spinning indicator)
-- Remembers the window position/size and launches a single instance — opening it again brings
-  the running window forward
+- **Start with Windows** and **Start routing** toggles, plus a **Refresh** button that re-reads
+  both speakers and microphones (with a spinning indicator)
+- Closing or minimizing keeps AudioMesh in the notification area; **Exit** in the tray menu
+  quits it, and launching it again brings the running window forward
+- Remembers the window position/size and launches a single instance
 - Warning banner when three or more Bluetooth speakers are enabled, because a single Bluetooth
   radio rarely carries three A2DP streams reliably
 - Custom dark window chrome (no system title bar), dark scroll bars with light outlines, and a
@@ -110,12 +108,15 @@ dotnet build .\src\AudioMesh\AudioMesh.csproj -c Release
 5. Or set **Sync delay** manually when mixing technologies: wired/USB/HDMI ≈ 0 ms, Bluetooth
    ≈ 150–250 ms behind a wired device (tune by ear with the test tone — the click should land at
    the same instant on every device).
-6. Press **Start routing**, or enable **Start routing on launch** so it happens automatically.
+6. Press **Start routing**, or enable **Start routing** in the setup deck so it happens
+   automatically. Turn on **Start with Windows** to launch at sign-in; closing or minimizing
+   keeps AudioMesh in the notification area until you choose **Exit** from its menu.
 7. Play something in any application.
 
-For video, enable **Low latency**; it removes roughly 150 ms of buffering. Bluetooth link
-latency still remains, so also use the player's A/V sync/audio-delay control if lips are still
-off (browsers generally have no such control).
+For video, choose **Latency** in **Buffer mode**; it removes roughly 200 ms of buffering
+compared with Stable. Bluetooth link latency still remains, so also use the player's A/V
+sync/audio-delay control if lips are still off (browsers generally have no such control).
+If the Bluetooth link starts dropping with Latency, move to **Balanced** or **Stable**.
 
 ### Mono, stereo, and stereo pairs
 
@@ -291,4 +292,3 @@ dotnet run --project .\tools\SmokeTest -- Dubstep 5 solo
 - If a headset switches to hands-free (HFP) because an app grabbed its microphone, quality
   collapses to 8/16 kHz mono. That is a profile change, not something the router controls.
 - Endpoint volumes are applied in software here, not via `IAudioEndpointVolume`.
-
