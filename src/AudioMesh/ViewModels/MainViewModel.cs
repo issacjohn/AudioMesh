@@ -379,11 +379,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             if (_engine.Source == SourceKind.SystemAudio && _perfectSync)
                 return "Perfect sync is on: Windows' default output is a silent endpoint, so every speaker is routed " +
                        "through the same pipeline and stays in sync. Your normal default is restored when you turn this off or close the app. " +
+                       "It needs one free output to capture from - nothing plugged in, or a virtual cable. " +
                        channel;
 
             if (_engine.Source == SourceKind.SystemAudio && Devices.Any(d => d.IsDefault))
                 return "The default device plays natively, so routed speakers trail it by the pipeline latency. " +
                        "Turn on Perfect sync to capture from a silent output instead and route every speaker identically. " +
+                       "Perfect sync needs one free output: nothing plugged in, or a virtual cable. " +
                        channel;
 
             return "Bluetooth endpoints usually need 150–250 ms of sync delay to line up with wired ones. " + channel;

@@ -168,9 +168,9 @@
                                 <TextBlock Text="Perfect sync" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <ToggleButton Style="{StaticResource Switch}" IsChecked="{Binding PerfectSync}"
                                               HorizontalAlignment="Right" AutomationProperties.Name="Perfect sync"
-                                              ToolTip="Capture from a silent output and route every speaker through one pipeline"/>
+                                              ToolTip="Capture from a free, unused output so every speaker shares one pipeline. Needs one free output: nothing plugged in, or a virtual cable."/>
                             </Grid>
-                            <TextBlock Text="One shared capture" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
+                            <TextBlock Text="Needs one free output" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
                         </StackPanel>
                         <Border Grid.Column="0" Width="1" Background="{StaticResource StrokeBrush}"
                                 HorizontalAlignment="Right" Margin="0,1,0,1"/>

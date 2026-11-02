@@ -24,6 +24,20 @@ band-limited sinc resampler and a closed-loop drift controller.
                               speakers  USB    HDMI   Bluetooth
 ```
 
+## Screenshots
+
+**Main window** — Perfect sync, Auto align, buffer mode, and one card per endpoint.
+
+![AudioMesh main window](docs/screenshots/main.jpg)
+
+**Per-speaker controls** — volume, sync delay, channel role, EQ preset and surround toggle.
+
+![AudioMesh device cards](docs/screenshots/devices.jpg)
+
+| Channel modes | Per-speaker EQ |
+|:---:|:---:|
+| ![Channel modes](docs/screenshots/channels.jpg) | ![Per-speaker EQ](docs/screenshots/eq-panel-2.jpg) |
+
 ## Why the resampler matters
 
 Every output device runs on its own crystal. Two devices that both report "48 kHz" are
@@ -206,14 +220,21 @@ trail it by ~100–200 ms — audible as a slap-back echo.
 
 Turn on **Perfect sync** to fix that properly:
 
+> **Requirement: one free output.** Perfect sync needs an endpoint that makes no sound — nothing
+> plugged into it, or a virtual cable such as VB-CABLE. That is where Windows' default points while
+> the app captures. If every output has a speaker on it, there is nowhere silent to aim, and Perfect
+> sync cannot engage.
+
 1. AudioMesh picks an unused output (for example *Realtek Digital Output*) and makes it the
    Windows default. Nothing is connected to it, so it is silent.
 2. Every real speaker is now a normal routed endpoint, so all of them go through the **same**
    pipeline and stay in sync with each other.
 3. Your previous default is restored automatically when you turn the toggle off or close the app.
 
-If no unused output exists (you have every endpoint enabled), Perfect sync will say so and leave
-the default alone. In that case keep the default device out of the routed list.
+If no unused output exists (you have every endpoint enabled), Perfect sync leaves the default alone
+and routing falls back to normal: the default speaker plays natively and the routed ones trail it.
+In that case, either free up an output (unplug one, enable an unused digital output, or install a
+virtual cable) or keep the default device out of the routed list.
 
 If AudioMesh is force-killed (Task Manager / crash) rather than closed, Windows can be left on the
 silent endpoint. Pick your speaker again in **Settings → System → Sound → Output** and it is back
