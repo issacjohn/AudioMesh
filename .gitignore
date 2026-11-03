@@ -10,6 +10,8 @@ dist/
 website/
 reel/
 design/
+installer/output/
+installer/prereq/
 
 # Large binaries
 *.exe

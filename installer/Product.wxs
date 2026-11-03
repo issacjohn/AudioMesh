@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Package Name="AudioMesh"
+           Manufacturer="AudioMesh"
+           Version="1.1.0"
+           UpgradeCode="0EA041CD-DC49-443D-8A99-557C04E61A17"
+           Scope="perMachine"
+           InstallerVersion="500"
+           Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of AudioMesh is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AudioMeshIcon" SourceFile="$(var.SourceRoot)\src\AudioMesh\Assets\AudioMesh.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AudioMeshIcon" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <util:CloseApplication Id="CloseAudioMesh"
+                           Target="AudioMesh.exe"
+                           TerminateProcess="1"
+                           RebootPrompt="no" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="AudioMesh" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AudioMeshPrograms" Name="AudioMesh" />
+    </StandardDirectory>
+
+    <Component Id="MainApplication" Directory="INSTALLFOLDER" Guid="*">
+      <File Id="AudioMeshExe"
+            Source="$(var.SourceRoot)\dist-fx\AudioMesh.exe"
+            KeyPath="yes" />
+
+      <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+    </Component>
+
+    <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="*">
+      <Shortcut Id="DesktopShortcutLink"
+                Directory="DesktopFolder"
+                Name="AudioMesh"
+                Description="Route one audio stream to every speaker"
+                Target="[INSTALLFOLDER]AudioMesh.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="AudioMeshIcon"
+                Advertise="no" />
+
+      <RegistryValue Root="HKCU" Key="Software\AudioMesh" Name="DesktopShortcut"
+                     Type="integer" Value="1" KeyPath="yes" />
+
+      <RemoveRegistryValue Root="HKCU"
+                           Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                           Name="AudioMesh" />
+    </Component>
+
+    <Component Id="StartMenuShortcut" Directory="AudioMeshPrograms" Guid="*">
+      <Shortcut Id="StartMenuShortcutLink"
+                Directory="AudioMeshPrograms"
+                Name="AudioMesh"
+                Description="Route one audio stream to every speaker"
+                Target="[INSTALLFOLDER]AudioMesh.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="AudioMeshIcon"
+                Advertise="no" />
+
+      <RegistryValue Root="HKCU" Key="Software\AudioMesh" Name="StartMenuShortcut"
+                     Type="integer" Value="1" KeyPath="yes" />
+
+      <RemoveFolder Id="RemoveProgramsFolder" Directory="AudioMeshPrograms" On="uninstall" />
+    </Component>
+
+    <Feature Id="MainFeature" Title="AudioMesh" Level="1">
+      <ComponentRef Id="MainApplication" />
+      <ComponentRef Id="DesktopShortcut" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+</Wix>
+

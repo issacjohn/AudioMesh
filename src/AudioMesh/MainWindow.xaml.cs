@@ -21,6 +21,8 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         _viewModel = new MainViewModel();
+        _viewModel.ShowRequested += ShowFromTray;
+        _viewModel.StartControlApi();
         DataContext = _viewModel;
         ApplyWindowPlacement();
 

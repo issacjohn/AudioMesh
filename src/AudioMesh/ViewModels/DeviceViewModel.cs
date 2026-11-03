@@ -109,6 +109,19 @@ public sealed class DeviceViewModel : ObservableObject
     public bool IsBluetooth => _info.IsBluetooth;
     public bool IsDesiredEnabled => _desiredEnabled;
     public bool IsLocked => _channel is { IsRunning: true } channel && channel.FillMs >= 20;
+
+    /// <summary>True while WASAPI is actually rendering this endpoint.</summary>
+    public bool IsLive => _channel is { IsRunning: true };
+
+    /// <summary>Last WASAPI failure reported by this endpoint, if any.</summary>
+    public string? LastError => _channel?.LastError;
+
+    /// <summary>Current elastic-buffer fill in milliseconds (0 when not routed).</summary>
+    public double BufferMs => _channel?.FillMs ?? 0;
+
+    public int TargetBufferMs => _channel?.TargetBufferMs ?? 0;
+
+    public double DriftPpm => _channel?.DriftPpm ?? 0;
     public int Rate => _info.Rate;
     public int Channels => _info.Channels;
 

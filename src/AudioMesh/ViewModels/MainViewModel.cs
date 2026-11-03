@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -48,6 +48,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private bool _isAboutOpen;
     private DeviceViewModel? _eqDevice;
     private MicrophoneOption? _selectedMicrophone;
+    private ControlApiServer? _controlApi;
     private string _calibrationStatus = "Uses the selected microphone to align the enabled speakers.";
     private string? _savedDefaultId;
     private string _statusText = "Idle";
@@ -99,12 +100,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ApplyPerfectSync();
         UpdateStatus();
 
-        if (_autoStart && Devices.Any(d => d.IsEnabled) && !IsRunning)
+        // --safe: start the UI and control API but never open a render stream.
+        // Useful for testing and for support sessions where audio must stay quiet.
+        bool safeMode = Environment.GetCommandLineArgs()
+            .Any(argument => argument.Equals("--safe", StringComparison.OrdinalIgnoreCase));
+
+        if (!safeMode && _autoStart && Devices.Any(d => d.IsEnabled) && !IsRunning)
             ToggleRouting();
+
+        StartControlApi();
     }
 
     public ObservableCollection<DeviceViewModel> Devices { get; } = new();
     public ObservableCollection<MicrophoneOption> Microphones { get; } = new();
+
+    /// <summary>Raised by the control API when a remote client asks to show the window.</summary>
+    public event Action? ShowRequested;
 
     public RelayCommand ToggleCommand { get; }
     public RelayCommand RefreshCommand { get; }
@@ -152,7 +163,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         get
         {
             Version? version = typeof(MainViewModel).Assembly.GetName().Version;
-            return version == null ? "Version 1.0.0" : $"Version {version.Major}.{version.Minor}.{version.Build}";
+            return version == null ? "Version 1.1.0" : $"Version {version.Major}.{version.Minor}.{version.Build}";
         }
     }
 
@@ -189,7 +200,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public string BluetoothWarningText =>
         $"{BluetoothSpeakerCount} Bluetooth speakers are enabled. One Bluetooth radio usually " +
-        "cannot carry three audio streams reliably — connect one speaker by wire or use a " +
+        "cannot carry three audio streams reliably â€” connect one speaker by wire or use a " +
         "second Bluetooth adapter.";
 
     /// <summary>Starts routing as soon as the app opens.</summary>
@@ -297,7 +308,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public bool CanCalibrate => !_isCalibrating;
 
-    public string CalibrateButtonText => _isCalibrating ? "Measuring…" : "Calibrate";
+    public string CalibrateButtonText => _isCalibrating ? "Measuringâ€¦" : "Calibrate";
 
     public bool IsRefreshing
     {
@@ -346,7 +357,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             int routed = Devices.Count(d => d.IsEnabled);
             return Devices.Count == 0
                 ? "No active playback endpoints detected."
-                : $"{Devices.Count} endpoint{(Devices.Count == 1 ? "" : "s")} · {routed} routed";
+                : $"{Devices.Count} endpoint{(Devices.Count == 1 ? "" : "s")} Â· {routed} routed";
         }
     }
 
@@ -388,7 +399,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                        "Perfect sync needs one free output: nothing plugged in, or a virtual cable. " +
                        channel;
 
-            return "Bluetooth endpoints usually need 150–250 ms of sync delay to line up with wired ones. " + channel;
+            return "Bluetooth endpoints usually need 150â€“250 ms of sync delay to line up with wired ones. " + channel;
         }
     }
 
@@ -440,7 +451,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         DeviceViewModel? silent = PickSilentCapture();
         if (silent == null)
         {
-            StatusText = "Perfect sync needs an unused output to capture from — connect or enable one more device.";
+            StatusText = "Perfect sync needs an unused output to capture from â€” connect or enable one more device.";
             return;
         }
 
@@ -591,7 +602,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         _scanTimer.Stop();
         IsCalibrating = true;
-        CalibrationStatus = "Keep the room quiet — measuring…";
+        CalibrationStatus = "Keep the room quiet â€” measuringâ€¦";
 
         try
         {
@@ -629,7 +640,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             int measured = results.Count(r => r.DelayMs >= 0);
             bool capped = results.Any(r => r.DelayMs >= 500);
             bool allHeard = measured == results.Count;
-            string summary = string.Join(" · ", results.Select(r =>
+            string summary = string.Join(" Â· ", results.Select(r =>
             {
                 if (r.DelayMs >= 0) return $"{ShortName(r.Name)} {r.DelayMs} ms";
                 return r.EndpointPeak > 0.01f
@@ -639,14 +650,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             if (measured == 0)
                 CalibrationStatus = "No speaker reached the microphone: " + summary +
-                                    " — check the mic and the speaker links.";
+                                    " â€” check the mic and the speaker links.";
             else if (allHeard && !capped)
                 CalibrationStatus = "Aligned: " + summary;
             else
                 CalibrationStatus = $"Measured {measured} of {results.Count}: " + summary +
                                     (capped
-                                        ? " — a link looks unstable; try again."
-                                        : " — a speaker did not reach the microphone. Check TWS, wire it, or move the mic closer.");
+                                        ? " â€” a link looks unstable; try again."
+                                        : " â€” a speaker did not reach the microphone. Check TWS, wire it, or move the mic closer.");
         }
         catch (Exception ex)
         {
@@ -797,7 +808,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (!IsRunning)
         {
-            StatusText = "Idle — enable one or more endpoints, then start routing.";
+            StatusText = "Idle â€” enable one or more endpoints, then start routing.";
             return;
         }
 
@@ -806,10 +817,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         string source = _engine.Source == SourceKind.SystemAudio ? "system audio" : "test tone";
         StatusText = $"Routing {source} to {routed} endpoint{(routed == 1 ? "" : "s")}" +
-                     (active > 0 ? $" · {active} locked" : " · acquiring clocks…");
+                     (active > 0 ? $" Â· {active} locked" : " Â· acquiring clocksâ€¦");
 
         if (_engine.LastError != null)
-            StatusText += " · " + _engine.LastError;
+            StatusText += " Â· " + _engine.LastError;
     }
 
     /// <summary>Refreshes both the speaker list and the calibration microphone list.</summary>
@@ -1030,6 +1041,145 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         UpdateStatus();
     }
 
+    // -- control API -------------------------------------------------------
+    /// <summary>
+    /// Starts the loopback API used by the DeskGadget module. Port and token live
+    /// in %APPDATA%\AudioMesh\control.json so the module can find them without the
+    /// user copying anything.
+    /// </summary>
+    public void StartControlApi()
+    {
+        if (_controlApi != null || _disposed) return;
+
+        ControlConfig config = ControlConfigStore.LoadOrCreate();
+
+        // If a stale instance still holds the port, walk forward a few numbers.
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            int port = config.Port + attempt;
+            var server = new ControlApiServer(port, config.Token, BuildControlState, ApplyControlRequest);
+            if (!server.Start())
+            {
+                server.Dispose();
+                continue;
+            }
+
+            if (attempt > 0)
+            {
+                config.Port = port;
+                ControlConfigStore.Save(config);
+            }
+
+            _controlApi = server;
+            return;
+        }
+    }
+
+    private ControlState BuildControlState() => OnUi(() =>
+    {
+        var endpoints = Devices.Select(device => new ControlEndpoint(
+            device.Id,
+            device.Name,
+            device.Kind,
+            device.IsEnabled,
+            Math.Round(device.Volume),
+            device.Muted,
+            (int)Math.Round(device.DelayMs),
+            (int)Math.Round(device.BufferMs),
+            device.TargetBufferMs,
+            Math.Round(device.DriftPpm, 1),
+            Math.Round(device.Level, 3),
+            device.IsLive,
+            device.LastError)).ToList();
+
+        return new ControlState(
+            IsRunning,
+            _engine.Source.ToString(),
+            _perfectSync,
+            _latencyMode.ToString(),
+            endpoints);
+    });
+
+    private ControlResult ApplyControlRequest(ControlRequest request) => OnUi(() =>
+    {
+        switch (request.Action.ToLowerInvariant())
+        {
+            case "toggle":
+                ToggleRouting();
+                return new ControlResult(true);
+
+            case "start":
+                if (!IsRunning) ToggleRouting();
+                return new ControlResult(true);
+
+            case "stop":
+                if (IsRunning) ToggleRouting();
+                return new ControlResult(true);
+
+            case "perfect_sync":
+                PerfectSync = request.Flag ?? !PerfectSync;
+                return new ControlResult(true);
+
+            case "set_source":
+                if (string.Equals(request.Text, "tone", StringComparison.OrdinalIgnoreCase))
+                {
+                    IsToneSource = true;
+                    return new ControlResult(true);
+                }
+
+                if (string.Equals(request.Text, "system", StringComparison.OrdinalIgnoreCase))
+                {
+                    IsSystemSource = true;
+                    return new ControlResult(true);
+                }
+
+                return new ControlResult(false, "value must be 'tone' or 'system'");
+
+            case "set_volume":
+            {
+                double volume = Math.Clamp(request.Number ?? 100, 0, 100);
+
+                if (!string.IsNullOrEmpty(request.Id))
+                {
+                    DeviceViewModel? device = Devices.FirstOrDefault(d => d.Id == request.Id);
+                    if (device == null) return new ControlResult(false, "unknown endpoint");
+                    device.Volume = volume;
+                }
+                else
+                {
+                    foreach (DeviceViewModel device in Devices.Where(d => d.IsEnabled))
+                        device.Volume = volume;
+                }
+
+                Save();
+                return new ControlResult(true);
+            }
+
+            case "set_mute":
+            {
+                if (string.IsNullOrEmpty(request.Id))
+                    return new ControlResult(false, "id is required");
+
+                DeviceViewModel? device = Devices.FirstOrDefault(d => d.Id == request.Id);
+                if (device == null) return new ControlResult(false, "unknown endpoint");
+
+                device.Muted = request.Flag ?? !device.Muted;
+                Save();
+                return new ControlResult(true);
+            }
+
+            case "show":
+                ShowRequested?.Invoke();
+                return new ControlResult(true);
+
+            default:
+                return new ControlResult(false, "unknown action");
+        }
+    });
+
+    private T OnUi<T>(Func<T> action) =>
+        _dispatcher.CheckAccess() ? action() : _dispatcher.Invoke(action);
+
     public void Save()
     {
         var settings = new AppSettings
@@ -1070,6 +1220,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _uiTimer.Stop();
         _scanTimer.Stop();
 
+        _controlApi?.Dispose();
+        _controlApi = null;
+
         try { Save(); } catch { /* ignore */ }
 
         // Give the user their normal default output back before we let go of the endpoints.
@@ -1088,3 +1241,4 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         try { _enumerator.Dispose(); } catch { /* ignore */ }
     }
 }
+

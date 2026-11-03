@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <Bundle Name="AudioMesh"
+          Version="1.1.0"
+          Manufacturer="AudioMesh"
+          UpgradeCode="7C5BC0FD-9DB3-449A-8F7E-6BD139EACF43"
+          IconSourceFile="$(var.SourceRoot)\src\AudioMesh\Assets\AudioMesh.ico">
+
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication Theme="rtfLicense"
+                                             LicenseFile="$(var.SourceRoot)\installer\license.rtf" />
+    </BootstrapperApplication>
+
+    <util:RegistrySearch Id="Net8DesktopSearch"
+                         Root="HKLM"
+                         Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
+                         Value="8.0.33"
+                         Result="exists"
+                         Variable="Net8DesktopInstalled"
+                         Bitness="always32" />
+
+    <Chain>
+      <ExePackage Id="Net8DesktopRuntime"
+                  SourceFile="$(var.SourceRoot)\installer\prereq\windowsdesktop-runtime-8.0.33-win-x64.exe"
+                  DisplayName=".NET 8 Desktop Runtime"
+                  Compressed="yes"
+                  PerMachine="yes"
+                  Permanent="yes"
+                  Vital="yes"
+                  InstallArguments="/install /quiet /norestart"
+                  RepairArguments="/repair /quiet /norestart"
+                  UninstallArguments="/uninstall /quiet /norestart"
+                  DetectCondition="Net8DesktopInstalled" />
+
+      <MsiPackage Id="AudioMeshMsi"
+                  SourceFile="$(var.OutputDir)\AudioMesh-1.1.0-x64.msi"
+                  Compressed="yes"
+                  Vital="yes" />
+    </Chain>
+  </Bundle>
+</Wix>
+
+

@@ -240,6 +240,31 @@ If AudioMesh is force-killed (Task Manager / crash) rather than closed, Windows 
 silent endpoint. Pick your speaker again in **Settings → System → Sound → Output** and it is back
 to normal.
 
+## Local control API (DeskGadget)
+
+AudioMesh runs a small HTTP server on `127.0.0.1` so the DeskGadget / LiquidDeck
+phone module can read state and control routing:
+
+```
+GET  /api/state
+POST /api/action   {"action": "toggle" | "start" | "stop" | "perfect_sync"
+                              | "set_source" | "set_volume" | "set_mute" | "show", ...}
+```
+
+- Binds to loopback only — nothing is exposed on the LAN.
+- Every request needs an `X-AudioMesh-Token` header. The port and token are
+  written to `%APPDATA%\AudioMesh\control.json` on first launch.
+- `--safe` starts the app and the API without opening any render stream, for
+  quiet testing.
+
+| Action | Value |
+|---|---|
+| `toggle`, `start`, `stop`, `show` | none |
+| `perfect_sync` | `true` / `false` |
+| `set_source` | `"system"` / `"tone"` |
+| `set_volume` | `0`–`100`, optional `id` for a single endpoint |
+| `set_mute` | `true` / `false`, `id` required |
+
 ## Architecture
 
 | File | Responsibility |
