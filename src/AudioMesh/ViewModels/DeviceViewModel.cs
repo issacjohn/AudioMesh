@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -25,7 +25,7 @@ public sealed class DeviceViewModel : ObservableObject
     private static readonly Brush OkBrush = Freeze("#35C58A");
     private static readonly Brush WarnBrush = Freeze("#F2A33A");
     private static readonly Brush ErrorBrush = Freeze("#FF5F57");
-    private static readonly Brush MutedDotBrush = Freeze("#4A5568");
+    private static readonly Brush MutedDotBrush = Freeze("#7A8499");
     private static readonly Brush AccentBrush = Freeze("#4C8DFF");
 
     private readonly AudioEngine _engine;
@@ -36,6 +36,8 @@ public sealed class DeviceViewModel : ObservableObject
     private bool _desiredEnabled;
     private double _volume = 100;
     private double _delayMs;
+    private string _delaySource = "Manual";
+    private bool _applyingDelay;
     private bool _muted;
     private ChannelMode _channelMode = ChannelMode.Stereo;
     private bool _canMoveUp;
@@ -70,6 +72,7 @@ public sealed class DeviceViewModel : ObservableObject
 
         _volume = saved?.Volume ?? 100;
         _delayMs = saved?.DelayMs ?? 0;
+        _delaySource = saved?.DelaySource ?? "Manual";
         _muted = saved?.Muted ?? false;
         _desiredEnabled = saved?.Enabled == true;
         _spatialEnabled = saved?.Spatial == true;
@@ -227,8 +230,28 @@ public sealed class DeviceViewModel : ObservableObject
         set
         {
             if (!Set(ref _delayMs, Math.Clamp(value, 0, 1000))) return;
+            if (!_applyingDelay) _delaySource = "Manual";
             if (_channel != null) _channel.DelayMs = (int)_delayMs;
         }
+    }
+
+    /// <summary>How the current delay was produced: Manual, Estimated or Calibrated.</summary>
+    public string DelaySource => _delaySource;
+
+    /// <summary>Sets a delay without treating it as a manual edit (estimate / calibration).</summary>
+    public void SetDelay(int milliseconds, string source)
+    {
+        _applyingDelay = true;
+        try
+        {
+            DelayMs = milliseconds;
+        }
+        finally
+        {
+            _applyingDelay = false;
+        }
+
+        _delaySource = source;
     }
 
     public bool Muted
@@ -526,6 +549,7 @@ public sealed class DeviceViewModel : ObservableObject
         get
         {
             if (_statusText.StartsWith("error", StringComparison.OrdinalIgnoreCase)) return ErrorBrush;
+            if (_statusText.Contains("dropout") || _statusText.Contains("restarting")) return WarnBrush;
             if (_statusText.Contains("buffer")) return OkBrush;
             if (_statusText.Contains("starting") || _statusText.Contains("waiting")) return WarnBrush;
             return MutedDotBrush;
@@ -537,6 +561,7 @@ public sealed class DeviceViewModel : ObservableObject
         Enabled = _desiredEnabled,
         Volume = _volume,
         DelayMs = (int)_delayMs,
+        DelaySource = _delaySource,
         Muted = _muted,
         Channel = _channelMode.ToString(),
         Spatial = _spatialEnabled,
@@ -569,6 +594,17 @@ public sealed class DeviceViewModel : ObservableObject
             OnPropertyChanged(nameof(PeakHoldWidth));
             StatusText = "not routed";
         }
+    }
+
+    /// <summary>Re-opens the WASAPI stream when the endpoint stalled but never reported an error.</summary>
+    public void RestartChannel()
+    {
+        var channel = _channel;
+        if (channel == null) return;
+
+        channel.Stop();
+        channel.Start();
+        StatusText = "restarting...";
     }
 
     public void Refresh()

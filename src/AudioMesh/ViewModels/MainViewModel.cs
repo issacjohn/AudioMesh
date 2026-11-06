@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -26,6 +27,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         return brush;
     }
 
+    // Rough hardware/codec latency by endpoint class, used by the no-mic estimator.
+    private const int BluetoothLatencyMs = 180;
+    private const int HdmiLatencyMs = 30;
+    private const int DigitalLatencyMs = 10;
+    private const int UsbLatencyMs = 15;
+
     private readonly AudioEngine _engine = new();
     private readonly MMDeviceEnumerator _enumerator = new();
     private readonly AppSettings _settings;
@@ -46,6 +53,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private LatencyOption _selectedLatencyOption = LatencyOption.For(LatencyMode.Stable);
     private bool _isEqOpen;
     private bool _isAboutOpen;
+    private bool _isUpdateOpen;
+    private bool _isCheckingUpdates;
+    private string _updateTitle = string.Empty;
+    private string _updateMessage = string.Empty;
+    private string _updateNotes = string.Empty;
+    private string _updateActionText = "Install update";
+    private bool _canInstallUpdate;
+    private UpdateInfo? _pendingUpdate;
+    private readonly DispatcherTimer _updateTimer;
     private DeviceViewModel? _eqDevice;
     private MicrophoneOption? _selectedMicrophone;
     private ControlApiServer? _controlApi;
@@ -53,6 +69,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private string? _savedDefaultId;
     private string _statusText = "Idle";
     private bool _disposed;
+    private string? _topologySignature;
+    private readonly Dictionary<string, long> _stalledSince = new(StringComparer.Ordinal);
 
     public MainViewModel()
     {
@@ -75,9 +93,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ToggleCommand = new RelayCommand(_ => ToggleRouting());
         RefreshCommand = new RelayCommand(_ => RefreshAll());
         CalibrateCommand = new RelayCommand(_ => RunCalibration());
+        EstimateCommand = new RelayCommand(_ => EstimateDelays());
         CloseEqCommand = new RelayCommand(_ => CloseEq());
         OpenAboutCommand = new RelayCommand(_ => OpenAbout());
         CloseAboutCommand = new RelayCommand(_ => IsAboutOpen = false);
+        CheckForUpdatesCommand = new RelayCommand(_ => _ = CheckForUpdatesAsync(manual: true));
+        InstallUpdateCommand = new RelayCommand(_ => _ = InstallUpdateAsync());
+        CloseUpdateCommand = new RelayCommand(_ => IsUpdateOpen = false);
         CloseOverlayCommand = new RelayCommand(_ => CloseOverlay());
         OpenSupportCommand = new RelayCommand(_ => ExternalLink.Open("https://buymeacoffee.com/issac_john"));
         OpenGitHubCommand = new RelayCommand(_ => ExternalLink.Open("https://github.com/issacjohn/AudioMesh"));
@@ -93,8 +115,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             // enabling it before the capture moves would briefly feed our own output back.
             _engine.EnsureSource();
             await RescanAsync();
+            AutoHealDelays();
         };
         _scanTimer.Start();
+
+        _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(6) };
+        _updateTimer.Tick += (_, _) => _ = CheckForUpdatesAsync(manual: false);
+        _updateTimer.Start();
 
         RescanSync();
         ApplyPerfectSync();
@@ -109,6 +136,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             ToggleRouting();
 
         StartControlApi();
+
+        // Check GitHub shortly after launch; a newer release opens the update card.
+        _ = CheckForUpdatesAsync(manual: false, delayMs: 5000);
     }
 
     public ObservableCollection<DeviceViewModel> Devices { get; } = new();
@@ -120,12 +150,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public RelayCommand ToggleCommand { get; }
     public RelayCommand RefreshCommand { get; }
     public RelayCommand CalibrateCommand { get; }
+    public RelayCommand EstimateCommand { get; }
     public RelayCommand CloseEqCommand { get; }
     public RelayCommand OpenAboutCommand { get; }
     public RelayCommand CloseAboutCommand { get; }
     public RelayCommand CloseOverlayCommand { get; }
     public RelayCommand OpenSupportCommand { get; }
     public RelayCommand OpenGitHubCommand { get; }
+    public RelayCommand CheckForUpdatesCommand { get; }
+    public RelayCommand InstallUpdateCommand { get; }
+    public RelayCommand CloseUpdateCommand { get; }
 
     public DeviceViewModel? EqDevice
     {
@@ -158,12 +192,55 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         private set => Set(ref _isAboutOpen, value);
     }
 
+    public bool IsUpdateOpen
+    {
+        get => _isUpdateOpen;
+        private set => Set(ref _isUpdateOpen, value);
+    }
+
+    public bool IsCheckingUpdates
+    {
+        get => _isCheckingUpdates;
+        private set
+        {
+            if (!Set(ref _isCheckingUpdates, value)) return;
+            OnPropertyChanged(nameof(UpdateActionText));
+        }
+    }
+
+    public string UpdateTitle
+    {
+        get => _updateTitle;
+        private set => Set(ref _updateTitle, value);
+    }
+
+    public string UpdateMessage
+    {
+        get => _updateMessage;
+        private set => Set(ref _updateMessage, value);
+    }
+
+    public string UpdateNotes
+    {
+        get => _updateNotes;
+        private set => Set(ref _updateNotes, value);
+    }
+
+    public string UpdateActionText =>
+        _isCheckingUpdates ? "Downloading..." : _updateActionText;
+
+    public bool CanInstallUpdate
+    {
+        get => _canInstallUpdate;
+        private set => Set(ref _canInstallUpdate, value);
+    }
+
     public string VersionText
     {
         get
         {
             Version? version = typeof(MainViewModel).Assembly.GetName().Version;
-            return version == null ? "Version 1.1.0" : $"Version {version.Major}.{version.Minor}.{version.Build}";
+            return version == null ? "Version 1.3.0" : $"Version {version.Major}.{version.Minor}.{version.Build}";
         }
     }
 
@@ -200,7 +277,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public string BluetoothWarningText =>
         $"{BluetoothSpeakerCount} Bluetooth speakers are enabled. One Bluetooth radio usually " +
-        "cannot carry three audio streams reliably â€” connect one speaker by wire or use a " +
+        "cannot carry three audio streams reliably - connect one speaker by wire or use a " +
         "second Bluetooth adapter.";
 
     /// <summary>Starts routing as soon as the app opens.</summary>
@@ -308,7 +385,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public bool CanCalibrate => !_isCalibrating;
 
-    public string CalibrateButtonText => _isCalibrating ? "Measuringâ€¦" : "Calibrate";
+    public string CalibrateButtonText => _isCalibrating ? "Measuring..." : "Calibrate";
 
     public bool IsRefreshing
     {
@@ -357,7 +434,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             int routed = Devices.Count(d => d.IsEnabled);
             return Devices.Count == 0
                 ? "No active playback endpoints detected."
-                : $"{Devices.Count} endpoint{(Devices.Count == 1 ? "" : "s")} Â· {routed} routed";
+                : $"{Devices.Count} endpoint{(Devices.Count == 1 ? "" : "s")} | {routed} routed";
         }
     }
 
@@ -399,7 +476,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                        "Perfect sync needs one free output: nothing plugged in, or a virtual cable. " +
                        channel;
 
-            return "Bluetooth endpoints usually need 150â€“250 ms of sync delay to line up with wired ones. " + channel;
+            return "Bluetooth endpoints usually need 150-250 ms of sync delay to line up with wired ones. " + channel;
         }
     }
 
@@ -451,7 +528,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         DeviceViewModel? silent = PickSilentCapture();
         if (silent == null)
         {
-            StatusText = "Perfect sync needs an unused output to capture from â€” connect or enable one more device.";
+            StatusText = "Perfect sync needs an unused output to capture from - connect or enable one more device.";
             return;
         }
 
@@ -583,6 +660,132 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Sets each speaker's delay from its class (Bluetooth, HDMI, USB, analog) plus the
+    /// engine's elastic buffer, so outputs line up without a microphone. The result is a
+    /// starting point: the click test can trim it by ear.
+    /// </summary>
+    public void EstimateDelays()
+    {
+        List<DeviceViewModel> targets = Devices.Where(d => d.IsEnabled).ToList();
+        if (targets.Count < 2)
+        {
+            CalibrationStatus = "Enable at least two speakers before estimating.";
+            return;
+        }
+
+        var totals = targets
+            .Select(device => new { Device = device, Latency = EstimateLatency(device) })
+            .ToList();
+
+        int slowest = totals.Max(item => item.Latency);
+        var parts = new List<string>();
+
+        foreach (var item in totals)
+        {
+            int delay = Math.Max(0, slowest - item.Latency);
+            item.Device.SetDelay(delay, "Estimated");
+
+            string label = item.Device.Name;
+            int parenthesis = label.IndexOf('(');
+            if (parenthesis > 0) label = label[..parenthesis].Trim();
+            if (label.Length > 24) label = label[..24];
+
+            parts.Add($"{label} {delay} ms");
+        }
+
+        Save();
+        CalibrationStatus = "Estimated: " + string.Join(" | ", parts) +
+                            " - fine-tune with the test tone.";
+    }
+
+    private static int EstimateLatency(DeviceViewModel device)
+    {
+        string kind = device.Kind;
+        if (kind == "Analog" && device.Name.Contains("Digital", StringComparison.OrdinalIgnoreCase))
+            kind = "Digital";
+
+        int hardware = kind switch
+        {
+            "Bluetooth" => BluetoothLatencyMs,
+            "HDMI" => HdmiLatencyMs,
+            "Digital" => DigitalLatencyMs,
+            "USB" => UsbLatencyMs,
+            _ => 0
+        };
+
+        int buffer = device.TargetBufferMs > 0
+            ? device.TargetBufferMs
+            : (device.IsBluetooth ? AudioLatency.BluetoothBufferMs : AudioLatency.WiredBufferMs);
+
+        return hardware + buffer;
+    }
+
+    // -- auto-heal ---------------------------------------------------------
+    /// <summary>
+    /// When the device set, formats or buffer targets change, recompute the delays
+    /// that came from "Estimate". Manual and mic-calibrated values are left alone.
+    /// </summary>
+    private void AutoHealDelays()
+    {
+        List<DeviceViewModel> active = Devices.Where(d => d.IsEnabled).ToList();
+        string signature = string.Join(";", active
+            .OrderBy(d => d.Id, StringComparer.Ordinal)
+            .Select(d => $"{d.Id}|{d.Kind}|{d.Rate}|{d.Channels}|{d.TargetBufferMs}"));
+
+        bool changed = _topologySignature != null && signature != _topologySignature;
+        _topologySignature = signature;
+        if (!changed) return;
+
+        if (!active.Any(d => d.DelaySource == "Estimated")) return;
+
+        var totals = active
+            .Select(device => new { Device = device, Latency = EstimateLatency(device) })
+            .ToList();
+
+        int slowest = totals.Max(item => item.Latency);
+        foreach (var item in totals.Where(i => i.Device.DelaySource == "Estimated"))
+            item.Device.SetDelay(Math.Max(0, slowest - item.Latency), "Estimated");
+
+        Save();
+        CalibrationStatus = "Delays re-estimated after a device change.";
+    }
+
+    /// <summary>
+    /// A stream can stop consuming without raising an error (typical with Bluetooth).
+    /// If an enabled channel has not rendered for five seconds, reopen it.
+    /// </summary>
+    private void CheckStalledChannels()
+    {
+        long now = Environment.TickCount64;
+
+        foreach (DeviceViewModel device in Devices)
+        {
+            if (!device.IsEnabled)
+            {
+                _stalledSince.Remove(device.Id);
+                continue;
+            }
+
+            if (device.IsLive || device.LastError != null)
+            {
+                _stalledSince.Remove(device.Id);
+                continue;
+            }
+
+            if (!_stalledSince.TryGetValue(device.Id, out long since))
+            {
+                _stalledSince[device.Id] = now;
+                continue;
+            }
+
+            if (now - since < 5000) continue;
+
+            _stalledSince[device.Id] = now;
+            device.RestartChannel();
+        }
+    }
+
+    /// <summary>
     /// Plays a short burst on each enabled speaker and measures the arrival with the
     /// selected microphone, then writes the relative delays into the cards.
     /// </summary>
@@ -602,7 +805,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         _scanTimer.Stop();
         IsCalibrating = true;
-        CalibrationStatus = "Keep the room quiet â€” measuringâ€¦";
+        CalibrationStatus = "Keep the room quiet - measuring...";
 
         try
         {
@@ -634,13 +837,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 if (result.DelayMs < 0) continue;
 
                 DeviceViewModel? device = Devices.FirstOrDefault(d => d.Id == result.Id);
-                if (device != null) device.DelayMs = result.DelayMs;
+                if (device != null) device.SetDelay(result.DelayMs, "Calibrated");
             }
 
             int measured = results.Count(r => r.DelayMs >= 0);
             bool capped = results.Any(r => r.DelayMs >= 500);
             bool allHeard = measured == results.Count;
-            string summary = string.Join(" Â· ", results.Select(r =>
+            string summary = string.Join(" | ", results.Select(r =>
             {
                 if (r.DelayMs >= 0) return $"{ShortName(r.Name)} {r.DelayMs} ms";
                 return r.EndpointPeak > 0.01f
@@ -650,14 +853,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             if (measured == 0)
                 CalibrationStatus = "No speaker reached the microphone: " + summary +
-                                    " â€” check the mic and the speaker links.";
+                                    " - check the mic and the speaker links.";
             else if (allHeard && !capped)
                 CalibrationStatus = "Aligned: " + summary;
             else
                 CalibrationStatus = $"Measured {measured} of {results.Count}: " + summary +
                                     (capped
-                                        ? " â€” a link looks unstable; try again."
-                                        : " â€” a speaker did not reach the microphone. Check TWS, wire it, or move the mic closer.");
+                                        ? " - a link looks unstable; try again."
+                                        : " - a speaker did not reach the microphone. Check TWS, wire it, or move the mic closer.");
         }
         catch (Exception ex)
         {
@@ -698,6 +901,109 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
 
         IsAboutOpen = true;
+    }
+
+    // -- updates -----------------------------------------------------------
+    private static string FormatVersion(Version version) =>
+        $"{version.Major}.{version.Minor}.{Math.Max(version.Build, 0)}";
+
+    public async Task CheckForUpdatesAsync(bool manual, int delayMs = 0)
+    {
+        if (_isCheckingUpdates || _disposed) return;
+
+        IsCheckingUpdates = true;
+        try
+        {
+            if (delayMs > 0) await Task.Delay(delayMs);
+
+            UpdateInfo? info = await UpdateService.CheckAsync();
+
+            if (info == null || info.Version <= UpdateService.CurrentVersion)
+            {
+                if (manual)
+                {
+                    ShowUpdate(
+                        "You're up to date",
+                        $"AudioMesh {FormatVersion(UpdateService.CurrentVersion)} is the latest version.",
+                        string.Empty,
+                        installable: false);
+                }
+
+                return;
+            }
+
+            _pendingUpdate = info;
+            ShowUpdate(
+                $"Version {FormatVersion(info.Version)} is available",
+                $"You have {FormatVersion(UpdateService.CurrentVersion)}. Install the update to get the latest fixes.",
+                info.Notes,
+                installable: info.SetupUrl != null);
+        }
+        catch (Exception ex)
+        {
+            if (manual)
+                ShowUpdate("Could not check for updates", ex.Message, string.Empty, installable: false);
+        }
+        finally
+        {
+            IsCheckingUpdates = false;
+        }
+    }
+
+    private void ShowUpdate(string title, string message, string notes, bool installable)
+    {
+        _updateTitle = title;
+        _updateMessage = message;
+        _updateNotes = notes ?? string.Empty;
+        _updateActionText = installable ? "Install update" : "Close";
+        _canInstallUpdate = installable;
+
+        OnPropertyChanged(nameof(UpdateTitle));
+        OnPropertyChanged(nameof(UpdateMessage));
+        OnPropertyChanged(nameof(UpdateNotes));
+        OnPropertyChanged(nameof(UpdateActionText));
+        OnPropertyChanged(nameof(CanInstallUpdate));
+
+        IsUpdateOpen = true;
+    }
+
+    private async Task InstallUpdateAsync()
+    {
+        UpdateInfo? info = _pendingUpdate;
+        if (info == null) return;
+
+        if (string.IsNullOrEmpty(info.SetupUrl))
+        {
+            if (!string.IsNullOrEmpty(info.ReleaseUrl)) ExternalLink.Open(info.ReleaseUrl);
+            IsUpdateOpen = false;
+            return;
+        }
+
+        try
+        {
+            _isCheckingUpdates = true;
+            OnPropertyChanged(nameof(UpdateActionText));
+            _updateMessage = "Downloading the installer...";
+            OnPropertyChanged(nameof(UpdateMessage));
+
+            string path = await UpdateService.DownloadAsync(info);
+
+            _updateMessage = "Starting the installer...";
+            OnPropertyChanged(nameof(UpdateMessage));
+
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            IsUpdateOpen = false;
+        }
+        catch (Exception ex)
+        {
+            _updateMessage = "Download failed: " + ex.Message;
+            OnPropertyChanged(nameof(UpdateMessage));
+        }
+        finally
+        {
+            _isCheckingUpdates = false;
+            OnPropertyChanged(nameof(UpdateActionText));
+        }
     }
 
     private void CloseOverlay()
@@ -801,6 +1107,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         foreach (DeviceViewModel device in Devices)
             device.Refresh();
 
+        CheckStalledChannels();
         UpdateStatus();
     }
 
@@ -808,7 +1115,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         if (!IsRunning)
         {
-            StatusText = "Idle â€” enable one or more endpoints, then start routing.";
+            StatusText = "Idle - enable one or more endpoints, then start routing.";
             return;
         }
 
@@ -817,10 +1124,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         string source = _engine.Source == SourceKind.SystemAudio ? "system audio" : "test tone";
         StatusText = $"Routing {source} to {routed} endpoint{(routed == 1 ? "" : "s")}" +
-                     (active > 0 ? $" Â· {active} locked" : " Â· acquiring clocksâ€¦");
+                     (active > 0 ? $" | {active} locked" : " | acquiring clocks...");
 
         if (_engine.LastError != null)
-            StatusText += " Â· " + _engine.LastError;
+            StatusText += " | " + _engine.LastError;
     }
 
     /// <summary>Refreshes both the speaker list and the calibration microphone list.</summary>
@@ -1168,9 +1475,43 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 return new ControlResult(true);
             }
 
+            case "set_delay":
+            {
+                if (string.IsNullOrEmpty(request.Id))
+                    return new ControlResult(false, "id is required");
+
+                DeviceViewModel? device = Devices.FirstOrDefault(d => d.Id == request.Id);
+                if (device == null) return new ControlResult(false, "unknown endpoint");
+
+                device.DelayMs = Math.Clamp(request.Number ?? 0, 0, 1000);
+                Save();
+                return new ControlResult(true);
+            }
+
             case "show":
                 ShowRequested?.Invoke();
                 return new ControlResult(true);
+
+            case "estimate":
+                EstimateDelays();
+                return new ControlResult(true);
+
+            case "check_updates":
+                _ = CheckForUpdatesAsync(manual: true);
+                return new ControlResult(true);
+
+            case "set_enabled":
+            {
+                if (string.IsNullOrEmpty(request.Id))
+                    return new ControlResult(false, "id is required");
+
+                DeviceViewModel? device = Devices.FirstOrDefault(d => d.Id == request.Id);
+                if (device == null) return new ControlResult(false, "unknown endpoint");
+
+                device.IsEnabled = request.Flag ?? !device.IsEnabled;
+                Save();
+                return new ControlResult(true);
+            }
 
             default:
                 return new ControlResult(false, "unknown action");
@@ -1219,6 +1560,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         _uiTimer.Stop();
         _scanTimer.Stop();
+        _updateTimer.Stop();
 
         _controlApi?.Dispose();
         _controlApi = null;
@@ -1241,4 +1583,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         try { _enumerator.Dispose(); } catch { /* ignore */ }
     }
 }
+
+
 

@@ -11,6 +11,7 @@ public sealed class DeviceSettings
     public bool Enabled { get; set; }
     public double Volume { get; set; } = 100;
     public int DelayMs { get; set; }
+    public string DelaySource { get; set; } = "Manual";
     public bool Muted { get; set; }
     public string Channel { get; set; } = "Stereo";
     public bool Spatial { get; set; }

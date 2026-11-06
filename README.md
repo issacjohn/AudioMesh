@@ -72,6 +72,13 @@ change — no clicks, no gaps.
   Bluetooth), Stable keeps the most headroom (~310 ms)
 - **Auto sync**: plays a short tone on each enabled speaker, records it with a selectable
   microphone, and sets the relative delays automatically
+- **Estimate delays**: sets the same delays from endpoint class (Bluetooth, HDMI, USB,
+  analog) plus the buffer mode, with no microphone; trim by ear with the test tone
+- **Auto-heal**: re-estimates those delays when a device reconnects or its format changes,
+  and a watchdog reopens any endpoint that stops rendering without reporting an error
+- **Update check**: looks at the GitHub release feed on launch and every six hours; About
+  and the tray menu have a manual *Check for updates*, with release notes and a one-click
+  installer download
 - **Per-speaker EQ**: 10 graphic bands, bass/treble shelves, volume-aware loudness, presets
   and a live response curve
 - **Start with Windows** and **Start routing** toggles, plus a **Refresh** button that re-reads
@@ -264,6 +271,10 @@ POST /api/action   {"action": "toggle" | "start" | "stop" | "perfect_sync"
 | `set_source` | `"system"` / `"tone"` |
 | `set_volume` | `0`–`100`, optional `id` for a single endpoint |
 | `set_mute` | `true` / `false`, `id` required |
+| `set_delay` | `0`–`1000` ms, `id` required |
+| `set_enabled` | `true` / `false`, `id` required |
+| `estimate` | none — estimates delays from endpoint type, no microphone |
+| `check_updates` | none — opens the update card with the GitHub result |
 
 ## Architecture
 

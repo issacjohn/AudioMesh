@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using AudioMesh.ViewModels;
 using Drawing = System.Drawing;
@@ -51,12 +51,21 @@ public sealed class TrayIconHost : IDisposable
         var exit = new WinForms.ToolStripMenuItem("Exit");
         exit.Click += (_, _) => _window.RequestExit();
 
+        var updates = new WinForms.ToolStripMenuItem("Check for updates");
+        updates.Click += (_, _) =>
+        {
+            _window.ShowFromTray();
+            _viewModel.CheckForUpdatesCommand.Execute(null);
+        };
+
         _menu.Items.Add(open);
         _menu.Items.Add(new WinForms.ToolStripSeparator());
         _menu.Items.Add(_routeItem);
         _menu.Items.Add(new WinForms.ToolStripSeparator());
         _menu.Items.Add(_loginItem);
         _menu.Items.Add(_autoRouteItem);
+        _menu.Items.Add(new WinForms.ToolStripSeparator());
+        _menu.Items.Add(updates);
         _menu.Items.Add(new WinForms.ToolStripSeparator());
         _menu.Items.Add(exit);
         _menu.Opening += (_, _) => RefreshMenu();

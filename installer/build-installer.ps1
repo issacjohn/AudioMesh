@@ -18,8 +18,8 @@ if (-not (Test-Path $app)) {
     throw "Missing $app. Publish the framework-dependent build first."
 }
 
-$msi = Join-Path $output "AudioMesh-1.1.0-x64.msi"
-$setup = Join-Path $output "AudioMeshSetup-1.1.0.exe"
+$msi = Join-Path $output "AudioMesh-1.3.0-x64.msi"
+$setup = Join-Path $output "AudioMeshSetup-1.3.0.exe"
 
 Write-Host "Building MSI..." -ForegroundColor Cyan
 & $wix build (Join-Path $PSScriptRoot "Product.wxs") `
@@ -43,5 +43,9 @@ Write-Host "Building setup bootstrapper..." -ForegroundColor Cyan
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Get-ChildItem $output -File | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize
+
+
+
+
 
 

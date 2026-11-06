@@ -4,7 +4,7 @@
      xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
 
   <Bundle Name="AudioMesh"
-          Version="1.1.0"
+          Version="1.3.0"
           Manufacturer="AudioMesh"
           UpgradeCode="7C5BC0FD-9DB3-449A-8F7E-6BD139EACF43"
           IconSourceFile="$(var.SourceRoot)\src\AudioMesh\Assets\AudioMesh.ico">
@@ -36,11 +36,15 @@
                   DetectCondition="Net8DesktopInstalled" />
 
       <MsiPackage Id="AudioMeshMsi"
-                  SourceFile="$(var.OutputDir)\AudioMesh-1.1.0-x64.msi"
+                  SourceFile="$(var.OutputDir)\AudioMesh-1.3.0-x64.msi"
                   Compressed="yes"
                   Vital="yes" />
     </Chain>
   </Bundle>
 </Wix>
+
+
+
+
 
 

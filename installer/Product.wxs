@@ -3,7 +3,7 @@
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
   <Package Name="AudioMesh"
            Manufacturer="AudioMesh"
-           Version="1.1.0"
+           Version="1.3.0"
            UpgradeCode="0EA041CD-DC49-443D-8A99-557C04E61A17"
            Scope="perMachine"
            InstallerVersion="500"
@@ -80,4 +80,6 @@
     </Feature>
   </Package>
 </Wix>
+
+
 
